@@ -1,5 +1,6 @@
 import Data.Maybe (isJust)
 import Text.Read (readMaybe)
+import Flow
 -- teaching haskell a new type
 -- the first int is the name of the constructor
 -- First type is called Integer and takes an integer "int", so on
@@ -33,21 +34,56 @@ eval :: String -> [Val] -> [Val]
 -- the last statement( in FP is going to be the return always.
 eval "*" (Real x:Real y:tl) = Real (x*y) : tl
 -- fill in the rest!
--- eval "*" (Integer x:Real y:tl) = Real (x*y) : tl
--- eval "*" (Real x:Real y:tl) = Real (x*y) : tl
+eval "*" (Integer x:Real y:tl) = Real (x*y) : tl
+eval "*" (Real x:Real y:tl) = Real (fromIntegral x*y) : tl
 -- eval "*" (Real x:Integer y:tl) = Real (x*y) : tl
--- eval "*" (Integer x:Integer y:tl) = Integer (x*y) : tl
-
+eval "*" (Integer x:Integer y:tl) = Integer (x*y) : tl
+eval "*" l = error("Stack underflow")
 -- above rule seemingly works for me on its own?!
 
 -- duplicates the element that is at the top of the stack
 eval "DUP"
+eval "DUP" [] = error("Stack underflow")
 
 -- this must be the last rule!
 -- catch all, puts on stack and lets others deal with it later!
 eval s l = Id s : l
 
+
+evalList :: [Val] -> [Val] -> [Val]
+evalList []  s = s 
+evalList (ID op:tl) s =
+    let s2 = eval op s 
+        in evalList tl s2 
+evalList (x:tl) s = evalList tl (x:s)
+
+-- inner function for foldl
+-- takes the current stack and an input, and computes the next stack
+evalF :: [Val] -> Val -> [Val]
+evalF s (Id op) eval op s 
+-- take x and make it the first element of s
+-- AKA: list constructors
+evalF s x = x:s
+
+-- takes instructions to the evaluated stack
+evalList2 :: [Val] -> [Val]
+evalList2 code = foldl evalF [] code
+
 -- Missed explanation a bit but i think this is making a list of words
 parse :: String -> [Val]
 parse s = let wL = words s in 
-        map strToVal wL
+    map strToVal wL
+
+-- dot operator / function composition
+
+interpret :: String -> [Val]
+interpret text = ((foldl evalF []) .
+    (map strToVal) . words) text
+
+-- using pipe operation instead
+interpret2 text = text |>
+    words |> --brake text into words
+    map strToVal |> -- string to instruction
+    foldl evalF [] -- perform evaluation
+
+    
